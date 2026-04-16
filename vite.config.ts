@@ -21,5 +21,15 @@ export default defineConfig(({mode}) => {
       hmr: process.env.DISABLE_HMR !== 'true',
       allowedHosts: ['fintrack-azy6.onrender.com'],
     },
+    build: {
+      sourcemap: false,
+      rollupOptions: {
+        output: {
+          manualChunks: {
+            pdfjs: ['pdfjs-dist'],
+          },
+        },
+      },
+    },
   };
 });

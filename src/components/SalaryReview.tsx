@@ -43,17 +43,29 @@ export function SalaryReview() {
       if (fileName.toLowerCase().endsWith(".pdf")) {
         const arrayBuffer = await file.arrayBuffer();
         const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-        const page = await pdf.getPage(1);
-        const viewport = page.getViewport({ scale: 1.5 });
-        const canvas = document.createElement("canvas");
-        const context = canvas.getContext("2d");
-        canvas.height = viewport.height;
-        canvas.width = viewport.width;
+        try {
+          const page = await pdf.getPage(1);
+          const viewport = page.getViewport({ scale: 1.2 });
+          const canvas = document.createElement("canvas");
+          const context = canvas.getContext("2d");
+          canvas.height = viewport.height;
+          canvas.width = viewport.width;
 
-        if (context) {
-          await page.render({ canvasContext: context, viewport, canvas }).promise;
-          base64Data = canvas.toDataURL("image/png").split(",")[1];
-          mimeType = "image/png";
+          if (context) {
+            await page.render({ canvasContext: context, viewport, canvas }).promise;
+            base64Data = canvas.toDataURL("image/jpeg", 0.8).split(",")[1];
+            mimeType = "image/jpeg";
+            
+            // Explicitly clear canvas to help GC
+            canvas.width = 0;
+            canvas.height = 0;
+          }
+        } finally {
+          await pdf.destroy();
+          if (pdfjsLib.GlobalWorkerOptions.workerPort) {
+            // pdfjs-dist 4.x+ worker cleanup if needed, 
+            // but destroy() usually handles doc-level cleanup
+          }
         }
       } else if (fileName.toLowerCase().match(/\.(png|jpg|jpeg)$/)) {
         const reader = new FileReader();
@@ -131,7 +143,7 @@ export function SalaryReview() {
       }
 
       const validResults: SalaryData[] = [];
-      const CONCURRENCY_LIMIT = 3;
+      const CONCURRENCY_LIMIT = 2;
       let completedCount = 0;
       const totalFiles = entries.length;
       
