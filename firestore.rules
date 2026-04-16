@@ -36,7 +36,7 @@ service cloud.firestore {
     }
 
     function isDocOwner() {
-      return isAuthenticated() && request.auth.uid == resource.data.userId;
+      return isAuthenticated() && (resource == null || request.auth.uid == resource.data.userId);
     }
 
     function isAdmin() {
@@ -60,11 +60,11 @@ service cloud.firestore {
     }
 
     function isValidCommitment(data) {
-      return data.id is string && data.id.size() > 0 &&
-             data.userId is string && data.userId == request.auth.uid &&
-             data.name is string && data.name.size() > 0 && data.name.size() < 100 &&
+      return data.id is string &&
+             data.userId == request.auth.uid &&
+             data.name is string &&
              data.type in ['EMI', 'Insurance', 'RD', 'Subscription', 'Expense', 'Income'] &&
-             data.installmentAmount is number && data.installmentAmount >= 0;
+             data.installmentAmount is number;
     }
 
     match /users/{userId} {
@@ -77,8 +77,8 @@ service cloud.firestore {
     match /commitments/{commitmentId} {
       allow read: if isDocOwner() || isAdmin();
       allow create: if isAuthenticated() && isValidCommitment(request.resource.data);
-      allow update: if isAuthenticated() && isDocOwner() && isValidCommitment(request.resource.data);
-      allow delete: if isAuthenticated() && isDocOwner() || isAdmin();
+      allow update: if isAuthenticated() && (isDocOwner() || isAdmin()) && isValidCommitment(request.resource.data);
+      allow delete: if isAuthenticated() && (isDocOwner() || isAdmin());
     }
   }
 }
