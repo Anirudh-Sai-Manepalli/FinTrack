@@ -20,7 +20,8 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import { auth, db, handleFirestoreError, OperationType } from "./lib/firebase";
 import { onAuthStateChanged, User, signOut as firebaseSignOut } from "firebase/auth";
 import { collection, query, where, onSnapshot, doc, setDoc, deleteDoc, writeBatch } from "firebase/firestore";
@@ -29,6 +30,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuGroup,
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
@@ -425,22 +427,25 @@ export default function App() {
             </div>
             
             <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="icon" className="h-9 w-9 rounded-xl overflow-hidden border-primary/20 bg-primary/5 hover:bg-primary/10">
-                  {user.photoURL ? (
-                    <img src={user.photoURL} alt={user.displayName || "User"} referrerPolicy="no-referrer" className="h-full w-full object-cover" />
-                  ) : (
-                    <UserIcon className="h-5 w-5 text-primary" />
-                  )}
-                </Button>
+              <DropdownMenuTrigger className={cn(
+                buttonVariants({ variant: "outline", size: "icon" }),
+                "h-9 w-9 rounded-xl overflow-hidden border-primary/20 bg-primary/5 hover:bg-primary/10 flex items-center justify-center p-0"
+              )}>
+                {user.photoURL ? (
+                  <img src={user.photoURL} alt={user.displayName || "User"} referrerPolicy="no-referrer" className="h-full w-full object-cover" />
+                ) : (
+                  <UserIcon className="h-5 w-5 text-primary" />
+                )}
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-56 rounded-xl shadow-xl border-none p-1">
-                <DropdownMenuLabel className="px-3 py-2">
-                  <div className="flex flex-col gap-0.5">
-                    <span className="text-sm font-semibold truncate">{user.displayName || "My Account"}</span>
-                    <span className="text-xs text-muted-foreground truncate">{user.email}</span>
-                  </div>
-                </DropdownMenuLabel>
+                <DropdownMenuGroup>
+                  <DropdownMenuLabel className="px-3 py-2">
+                    <div className="flex flex-col gap-0.5">
+                      <span className="text-sm font-semibold truncate">{user.displayName || "My Account"}</span>
+                      <span className="text-xs text-muted-foreground truncate">{user.email}</span>
+                    </div>
+                  </DropdownMenuLabel>
+                </DropdownMenuGroup>
                 <DropdownMenuSeparator className="bg-muted/50" />
                 <DropdownMenuItem onClick={handleSignOut} className="rounded-lg text-destructive focus:text-destructive focus:bg-destructive/10 cursor-pointer gap-2 py-2">
                   <LogOut className="h-4 w-4" />
