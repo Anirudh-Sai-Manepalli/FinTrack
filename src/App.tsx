@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/sheet";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { auth, db, handleFirestoreError, OperationType } from "./lib/firebase";
+import { auth, db, handleFirestoreError, OperationType, cleanObject } from "./lib/firebase";
 import { onAuthStateChanged, User, signOut as firebaseSignOut } from "firebase/auth";
 import { collection, query, where, onSnapshot, doc, setDoc, deleteDoc, writeBatch } from "firebase/firestore";
 import { Login } from "./components/Login";
@@ -82,7 +82,7 @@ export default function App() {
           const batch = writeBatch(db);
           localData.forEach((c) => {
             const docRef = doc(db, "commitments", c.id);
-            batch.set(docRef, { ...c, userId: user.uid });
+            batch.set(docRef, cleanObject({ ...c, userId: user.uid }));
           });
           
           batch.commit().then(() => {
@@ -99,7 +99,7 @@ export default function App() {
   const addCommitment = async (newCommitment: Commitment) => {
     if (!user) return;
     try {
-      const commitmentWithUser = { ...newCommitment, userId: user.uid };
+      const commitmentWithUser = cleanObject({ ...newCommitment, userId: user.uid });
       await setDoc(doc(db, "commitments", newCommitment.id), commitmentWithUser);
       toast.success("Commitment added!");
     } catch (error) {
@@ -110,7 +110,8 @@ export default function App() {
   const updateCommitment = async (updated: Commitment) => {
     if (!user) return;
     try {
-      await setDoc(doc(db, "commitments", updated.id), { ...updated, userId: user.uid });
+      const cleaned = cleanObject({ ...updated, userId: user.uid });
+      await setDoc(doc(db, "commitments", updated.id), cleaned);
     } catch (error) {
       handleFirestoreError(error, OperationType.UPDATE, `commitments/${updated.id}`);
     }
@@ -351,7 +352,7 @@ export default function App() {
           const batch = writeBatch(db);
           importedData.forEach((c) => {
             const docRef = doc(db, "commitments", c.id);
-            batch.set(docRef, { ...c, userId: user.uid });
+            batch.set(docRef, cleanObject({ ...c, userId: user.uid }));
           });
           await batch.commit();
           toast.success("Data imported successfully!");

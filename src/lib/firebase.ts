@@ -61,6 +61,27 @@ export function handleFirestoreError(error: unknown, operationType: OperationTyp
   throw new Error(JSON.stringify(errInfo));
 }
 
+/**
+ * Strips undefined values from an object recursively to prevent Firestore errors.
+ */
+export function cleanObject<T>(obj: T): T {
+  if (obj === null || typeof obj !== 'object') {
+    return obj;
+  }
+
+  if (Array.isArray(obj)) {
+    return obj.map(item => cleanObject(item)) as any;
+  }
+
+  const cleaned: any = {};
+  for (const [key, value] of Object.entries(obj)) {
+    if (value !== undefined) {
+      cleaned[key] = cleanObject(value);
+    }
+  }
+  return cleaned as T;
+}
+
 // Validation Test
 async function testConnection() {
   try {
