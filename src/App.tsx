@@ -7,7 +7,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { differenceInMonths, format, isSameDay, isAfter, startOfMonth, isBefore, addMonths } from "date-fns";
-import { Wallet2, Filter, TrendingUp, TrendingDown, LayoutGrid, Bell, BellDot, Download, Upload as UploadIcon, LogOut, User as UserIcon } from "lucide-react";
+import { Wallet2, Filter, TrendingUp, TrendingDown, LayoutGrid, Bell, BellDot, Download, Upload as UploadIcon, LogOut, User as UserIcon, Trash2 } from "lucide-react";
 import { Toaster } from "@/components/ui/sonner";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
@@ -347,7 +347,10 @@ export default function App() {
     const reader = new FileReader();
     reader.onload = async (event) => {
       try {
-        const importedData = JSON.parse(event.target?.result as string);
+        const result = event.target?.result;
+        if (typeof result !== 'string') throw new Error("Could not read file content");
+        
+        const importedData = JSON.parse(result);
         if (Array.isArray(importedData)) {
           const batch = writeBatch(db);
           importedData.forEach((c) => {
@@ -359,13 +362,37 @@ export default function App() {
         } else {
           toast.error("Invalid data format. Expected an array of commitments.");
         }
-      } catch (err) {
-        toast.error("Failed to parse the imported file.");
+      } catch (err: any) {
+        console.error("Import error:", err);
+        toast.error(`Import failed: ${err.message || "Invalid JSON format"}`);
       }
     };
     reader.readAsText(file);
     // Reset input
     e.target.value = '';
+  };
+
+  const handleResetData = async () => {
+    if (!user || commitments.length === 0) {
+      toast.info("No data to reset.");
+      return;
+    }
+    
+    // Using native confirm for a blocking safety check
+    if (window.confirm("Are you sure you want to delete ALL your data? This action is permanent and cannot be undone.")) {
+      try {
+        const batch = writeBatch(db);
+        commitments.forEach((c) => {
+          const docRef = doc(db, "commitments", c.id);
+          batch.delete(docRef);
+        });
+        await batch.commit();
+        toast.success("All data has been wiped clean.");
+      } catch (error) {
+        handleFirestoreError(error, OperationType.WRITE, "reset-data-all");
+        toast.error("Failed to reset data. Please try again.");
+      }
+    }
   };
 
   const handleSignOut = async () => {
@@ -446,7 +473,11 @@ export default function App() {
                   </DropdownMenuLabel>
                 </DropdownMenuGroup>
                 <DropdownMenuSeparator className="bg-muted/50" />
-                <DropdownMenuItem onClick={handleSignOut} className="rounded-lg text-destructive focus:text-destructive focus:bg-destructive/10 cursor-pointer gap-2 py-2">
+                <DropdownMenuItem onClick={handleResetData} className="rounded-lg text-destructive focus:text-destructive focus:bg-destructive/10 cursor-pointer gap-2 py-2">
+                  <Trash2 className="h-4 w-4" />
+                  Reset all data
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handleSignOut} className="rounded-lg text-muted-foreground hover:text-foreground cursor-pointer gap-2 py-2">
                   <LogOut className="h-4 w-4" />
                   Log out
                 </DropdownMenuItem>
