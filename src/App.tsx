@@ -8,7 +8,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { differenceInMonths, format, isSameDay, isAfter, startOfMonth, isBefore, addMonths } from "date-fns";
-import { Wallet2, Filter, TrendingUp, TrendingDown, LayoutGrid, Bell, BellDot, Download, Upload as UploadIcon } from "lucide-react";
+import { Wallet2, Filter, TrendingUp, TrendingDown, LayoutGrid, Bell, BellDot, Download, Upload as UploadIcon, LogOut, User as UserIcon } from "lucide-react";
 import { Toaster } from "@/components/ui/sonner";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
@@ -21,18 +21,110 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
+import { auth, db, handleFirestoreError, OperationType } from "./lib/firebase";
+import { onAuthStateChanged, User, signOut as firebaseSignOut } from "firebase/auth";
+import { collection, query, where, onSnapshot, doc, setDoc, deleteDoc, writeBatch } from "firebase/firestore";
+import { Login } from "./components/Login";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "../components/ui/dropdown-menu";
 
 export default function App() {
-  const [commitments, setCommitments] = useState<Commitment[]>(() => {
-    const saved = localStorage.getItem("commitments");
-    return saved ? JSON.parse(saved) : [];
-  });
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [commitments, setCommitments] = useState<Commitment[]>([]);
   const [filter, setFilter] = useState<CommitmentType | "All" | "Debt" | "Investment">("All");
   const [activeTab, setActiveTab] = useState<"dashboard" | "salary-review">("dashboard");
 
+  // Auth Listener
   useEffect(() => {
-    localStorage.setItem("commitments", JSON.stringify(commitments));
-  }, [commitments]);
+    const unsubscribe = onAuthStateChanged(auth, (u) => {
+      setUser(u);
+      setLoading(false);
+    });
+    return unsubscribe;
+  }, []);
+
+  // Sync with Firestore
+  useEffect(() => {
+    if (!user) {
+      setCommitments([]);
+      return;
+    }
+
+    const q = query(collection(db, "commitments"), where("userId", "==", user.uid));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const data = snapshot.docs.map(doc => doc.data() as Commitment);
+      setCommitments(data);
+    }, (error) => {
+      handleFirestoreError(error, OperationType.LIST, "commitments");
+    });
+
+    return unsubscribe;
+  }, [user]);
+
+  // Migration from localStorage
+  useEffect(() => {
+    if (user && loading === false) {
+      const saved = localStorage.getItem("commitments");
+      if (saved) {
+        const localData = JSON.parse(saved) as Commitment[];
+        if (localData.length > 0) {
+          toast("Migrating local data to your account...", {
+            description: "We found some data in your browser. Moving it to the cloud."
+          });
+          
+          const batch = writeBatch(db);
+          localData.forEach((c) => {
+            const docRef = doc(db, "commitments", c.id);
+            batch.set(docRef, { ...c, userId: user.uid });
+          });
+          
+          batch.commit().then(() => {
+            localStorage.removeItem("commitments");
+            toast.success("Migration complete!");
+          }).catch(err => {
+            console.error("Migration failed", err);
+          });
+        }
+      }
+    }
+  }, [user, loading]);
+
+  const addCommitment = async (newCommitment: Commitment) => {
+    if (!user) return;
+    try {
+      const commitmentWithUser = { ...newCommitment, userId: user.uid };
+      await setDoc(doc(db, "commitments", newCommitment.id), commitmentWithUser);
+      toast.success("Commitment added!");
+    } catch (error) {
+      handleFirestoreError(error, OperationType.CREATE, "commitments");
+    }
+  };
+
+  const updateCommitment = async (updated: Commitment) => {
+    if (!user) return;
+    try {
+      await setDoc(doc(db, "commitments", updated.id), { ...updated, userId: user.uid });
+    } catch (error) {
+      handleFirestoreError(error, OperationType.UPDATE, `commitments/${updated.id}`);
+    }
+  };
+
+  const deleteCommitment = async (id: string) => {
+    if (!user) return;
+    try {
+      await deleteDoc(doc(db, "commitments", id));
+      toast.success("Commitment deleted");
+    } catch (error) {
+      handleFirestoreError(error, OperationType.DELETE, `commitments/${id}`);
+    }
+  };
 
   // Notification Logic
   const notifications = useMemo(() => {
@@ -64,20 +156,6 @@ export default function App() {
       });
     }
   }, [notifications.length]);
-
-  const addCommitment = (newCommitment: Commitment) => {
-    setCommitments((prev) => [...prev, newCommitment]);
-  };
-
-  const updateCommitment = (updated: Commitment) => {
-    setCommitments((prev) =>
-      prev.map((c) => (c.id === updated.id ? updated : c))
-    );
-  };
-
-  const deleteCommitment = (id: string) => {
-    setCommitments((prev) => prev.filter((c) => c.id !== id));
-  };
 
   const togglePayment = (commitment: Commitment) => {
     const today = new Date();
@@ -261,16 +339,21 @@ export default function App() {
     toast.success("Data exported successfully!");
   };
 
-  const handleImportData = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImportData = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file) return;
+    if (!file || !user) return;
 
     const reader = new FileReader();
-    reader.onload = (event) => {
+    reader.onload = async (event) => {
       try {
         const importedData = JSON.parse(event.target?.result as string);
         if (Array.isArray(importedData)) {
-          setCommitments(importedData);
+          const batch = writeBatch(db);
+          importedData.forEach((c) => {
+            const docRef = doc(db, "commitments", c.id);
+            batch.set(docRef, { ...c, userId: user.uid });
+          });
+          await batch.commit();
           toast.success("Data imported successfully!");
         } else {
           toast.error("Invalid data format. Expected an array of commitments.");
@@ -283,6 +366,32 @@ export default function App() {
     // Reset input
     e.target.value = '';
   };
+
+  const handleSignOut = async () => {
+    try {
+      await firebaseSignOut(auth);
+      toast.success("Signed out");
+    } catch (error) {
+      toast.error("Error signing out");
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#F8F9FA]">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <>
+        <Toaster />
+        <Login />
+      </>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#F8F9FA] text-foreground font-sans selection:bg-primary/10">
@@ -314,6 +423,32 @@ export default function App() {
                 Export
               </Button>
             </div>
+            
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="icon" className="h-9 w-9 rounded-xl overflow-hidden border-primary/20 bg-primary/5 hover:bg-primary/10">
+                  {user.photoURL ? (
+                    <img src={user.photoURL} alt={user.displayName || "User"} referrerPolicy="no-referrer" className="h-full w-full object-cover" />
+                  ) : (
+                    <UserIcon className="h-5 w-5 text-primary" />
+                  )}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56 rounded-xl shadow-xl border-none p-1">
+                <DropdownMenuLabel className="px-3 py-2">
+                  <div className="flex flex-col gap-0.5">
+                    <span className="text-sm font-semibold truncate">{user.displayName || "My Account"}</span>
+                    <span className="text-xs text-muted-foreground truncate">{user.email}</span>
+                  </div>
+                </DropdownMenuLabel>
+                <DropdownMenuSeparator className="bg-muted/50" />
+                <DropdownMenuItem onClick={handleSignOut} className="rounded-lg text-destructive focus:text-destructive focus:bg-destructive/10 cursor-pointer gap-2 py-2">
+                  <LogOut className="h-4 w-4" />
+                  Log out
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+
             <Sheet>
               <SheetTrigger render={(props) => (
                 <Button {...props} variant="ghost" size="icon" className="relative" id="notif-trigger">

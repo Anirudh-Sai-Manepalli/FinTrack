@@ -1,0 +1,99 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile and settings",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "displayName": { "type": "string" },
+        "photoURL": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "email"]
+    },
+    "Commitment": {
+      "title": "Commitment",
+      "description": "A financial commitment (EMI, RD, Income, etc.)",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string", "description": "The UID of the owner" },
+        "name": { "type": "string" },
+        "type": { "type": "string", "enum": ["EMI", "Insurance", "RD", "Subscription", "Expense", "Income"] },
+        "startDate": { "type": "string", "format": "date-time" },
+        "installmentAmount": { "type": "number" },
+        "totalTenureMonths": { "type": "number" },
+        "payments": {
+          "type": "array",
+          "items": { "$ref": "PaymentRecord" }
+        },
+        "salaryHistory": {
+          "type": "array",
+          "items": { "$ref": "SalaryHistory" }
+        },
+        "extraIncomes": {
+          "type": "array",
+          "items": { "$ref": "ExtraIncome" }
+        },
+        "manualOverrides": {
+          "type": "array",
+          "items": { "$ref": "ManualOverride" }
+        },
+        "loanAmount": { "type": "number" },
+        "interestRate": { "type": "number" }
+      },
+      "required": ["id", "userId", "name", "type", "startDate", "installmentAmount"]
+    },
+    "PaymentRecord": {
+      "title": "PaymentRecord",
+      "type": "object",
+      "properties": {
+        "monthYear": { "type": "string" },
+        "status": { "type": "string", "enum": ["paid", "unpaid"] },
+        "actualDate": { "type": "string", "format": "date-time" }
+      }
+    },
+    "SalaryHistory": {
+      "title": "SalaryHistory",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "startDate": { "type": "string", "format": "date-time" },
+        "endDate": { "type": "string", "format": "date-time" },
+        "amount": { "type": "number" }
+      }
+    },
+    "ExtraIncome": {
+      "title": "ExtraIncome",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "date": { "type": "string", "format": "date-time" },
+        "amount": { "type": "number" },
+        "type": { "type": "string", "enum": ["Bonus", "Award"] },
+        "description": { "type": "string" }
+      }
+    },
+    "ManualOverride": {
+      "title": "ManualOverride",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "monthYear": { "type": "string" },
+        "amount": { "type": "number" }
+      }
+    }
+  },
+  "firestore": {
+    "users/{userId}": {
+      "schema": "User",
+      "description": "User profile data"
+    },
+    "commitments/{commitmentId}": {
+      "schema": "Commitment",
+      "description": "Financial commitments for users"
+    }
+  }
+}
