@@ -1,0 +1,6 @@
+{
+  "name": "FinTrack - Financial Commitment Tracker",
+  "description": "A responsive web application to track recurring financial commitments like EMIs, Insurance premiums, and RDs with visual progress indicators and summary analytics.",
+  "requestFramePermissions": [],
+  "majorCapabilities": []
+}
