@@ -10,6 +10,9 @@ interface SummaryCardsProps {
   overallPaid: number;
   overallRemaining: number;
   totalReceivedIncome: number;
+  salaryTotal: number;
+  awardTotal: number;
+  bonusTotal: number;
 }
 
 export function SummaryCards({ 
@@ -17,7 +20,10 @@ export function SummaryCards({
   totalMonthlyInflow, 
   overallPaid, 
   overallRemaining,
-  totalReceivedIncome
+  totalReceivedIncome,
+  salaryTotal,
+  awardTotal,
+  bonusTotal
 }: SummaryCardsProps) {
   const totalValue = overallPaid + overallRemaining;
   const progress = totalValue > 0 ? (overallPaid / totalValue) * 100 : 0;
@@ -50,15 +56,28 @@ export function SummaryCards({
       </Card>
 
       <Card className="border-none shadow-sm bg-primary/5">
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 py-3">
           <CardTitle className="text-sm font-medium">Total Received Income</CardTitle>
           <TrendingUp className="h-4 w-4 text-emerald-600" />
         </CardHeader>
-        <CardContent>
+        <CardContent className="pb-4">
           <div className="text-2xl font-bold text-emerald-600">
             {formatIndianCurrency(totalReceivedIncome)}
           </div>
-          <p className="text-xs text-muted-foreground mt-1">Total from joining date</p>
+          <div className="mt-2 space-y-1">
+            <div className="flex justify-between text-[10px] text-muted-foreground">
+              <span>Salary:</span>
+              <span className="font-medium text-foreground">{formatIndianCurrency(salaryTotal)}</span>
+            </div>
+            <div className="flex justify-between text-[10px] text-muted-foreground">
+              <span>Awards:</span>
+              <span className="font-medium text-foreground">{formatIndianCurrency(awardTotal)}</span>
+            </div>
+            <div className="flex justify-between text-[10px] text-muted-foreground">
+              <span>Bonus:</span>
+              <span className="font-medium text-foreground">{formatIndianCurrency(bonusTotal)}</span>
+            </div>
+          </div>
         </CardContent>
       </Card>
 

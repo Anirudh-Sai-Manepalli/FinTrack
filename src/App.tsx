@@ -117,6 +117,9 @@ export default function App() {
     let overallPaid = 0;
     let overallRemaining = 0;
     let totalReceivedIncome = 0;
+    let salaryTotal = 0;
+    let awardTotal = 0;
+    let bonusTotal = 0;
 
     commitments.forEach((c) => {
       // Outflow vs Inflow
@@ -194,8 +197,13 @@ export default function App() {
         
         // Add extra incomes
         if (c.extraIncomes) {
-          c.extraIncomes.forEach(e => paid += e.amount);
+          c.extraIncomes.forEach(e => {
+            paid += e.amount;
+            if (e.type === 'Award') awardTotal += e.amount;
+            if (e.type === 'Bonus') bonusTotal += e.amount;
+          });
         }
+        salaryTotal += (paid - (c.extraIncomes?.reduce((acc, e) => acc + e.amount, 0) || 0));
         totalReceivedIncome += paid;
       } else {
         paid = finalMonthsPaid * c.installmentAmount;
@@ -215,7 +223,16 @@ export default function App() {
     // This implies the "Salary" commitment's "Total Paid" should reflect the accumulation.
     // The current logic already does this via 'finalMonthsPaid * installmentAmount'.
 
-    return { totalMonthlyOutflow, totalMonthlyInflow, overallPaid, overallRemaining, totalReceivedIncome };
+    return { 
+      totalMonthlyOutflow, 
+      totalMonthlyInflow, 
+      overallPaid, 
+      overallRemaining, 
+      totalReceivedIncome,
+      salaryTotal,
+      awardTotal,
+      bonusTotal
+    };
   }, [commitments]);
 
   return (
