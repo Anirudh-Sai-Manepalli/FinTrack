@@ -403,12 +403,22 @@ export default function App() {
     if (window.confirm("Are you sure you want to delete ALL your data? This action is permanent and cannot be undone.")) {
       try {
         const batch = writeBatch(db);
+        let count = 0;
         commitments.forEach((c) => {
-          const docRef = doc(db, "commitments", c.id);
-          batch.delete(docRef);
+          // Security gate: only delete if the user owns it
+          if (c.userId === user.uid) {
+            const docRef = doc(db, "commitments", c.id);
+            batch.delete(docRef);
+            count++;
+          }
         });
-        await batch.commit();
-        toast.success("All data has been wiped clean.");
+        
+        if (count > 0) {
+          await batch.commit();
+          toast.success("All your data has been wiped clean.");
+        } else {
+          toast.info("No personal data found to delete.");
+        }
       } catch (error) {
         handleFirestoreError(error, OperationType.WRITE, "reset-data-all");
         toast.error("Failed to reset data. Please try again.");
