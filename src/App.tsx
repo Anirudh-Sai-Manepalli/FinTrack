@@ -3,7 +3,6 @@ import { Commitment, CommitmentType, formatIndianCurrency } from "./types";
 import { SummaryCards } from "./components/SummaryCards";
 import { CommitmentCard } from "./components/CommitmentCard";
 import { CommitmentForm } from "./components/CommitmentForm";
-import { SalaryReview } from "./components/SalaryReview";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
@@ -41,7 +40,6 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [commitments, setCommitments] = useState<Commitment[]>([]);
   const [filter, setFilter] = useState<CommitmentType | "All" | "Debt" | "Investment">("All");
-  const [activeTab, setActiveTab] = useState<"dashboard" | "salary-review">("dashboard");
 
   // Auth Listener
   useEffect(() => {
@@ -512,93 +510,70 @@ export default function App() {
             <CommitmentForm onAdd={addCommitment} />
           </div>
         </div>
-
-        <div className="container mx-auto px-4 mt-4">
-          <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)} className="w-full">
-            <TabsList className="bg-muted/50 p-1 rounded-xl">
-              <TabsTrigger value="dashboard" className="rounded-lg px-6">Dashboard</TabsTrigger>
-              <TabsTrigger value="salary-review" className="rounded-lg px-6">Salary Review</TabsTrigger>
-            </TabsList>
-          </Tabs>
-        </div>
       </header>
 
       <main className="container mx-auto py-8 px-4 space-y-8">
-        <Tabs value={activeTab} className="w-full mt-0">
-          <TabsContent value="dashboard" className="mt-0 space-y-8">
-            <section className="space-y-4">
-              <div className="flex flex-col gap-1">
-                <h2 className="text-2xl font-bold tracking-tight">Financial Overview</h2>
-                <p className="text-muted-foreground">Track your progress and upcoming installments.</p>
+        <section className="space-y-4">
+          <div className="flex flex-col gap-1">
+            <h2 className="text-2xl font-bold tracking-tight">Financial Overview</h2>
+            <p className="text-muted-foreground">Track your progress and upcoming installments.</p>
+          </div>
+          <SummaryCards {...totals} />
+        </section>
+
+        <Separator className="my-8" />
+
+        <section className="space-y-6">
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+            <div className="flex items-center gap-2">
+              <Filter className="h-4 w-4 text-muted-foreground" />
+              <h3 className="text-lg font-semibold">Commitments</h3>
+            </div>
+            <Tabs value={filter} onValueChange={(v) => setFilter(v as any)} className="w-full lg:w-auto">
+              <TabsList className="grid w-full grid-cols-3 h-9">
+                <TabsTrigger value="All" className="text-xs gap-1">
+                  <LayoutGrid className="h-3 w-3 hidden sm:inline" /> All
+                </TabsTrigger>
+                <TabsTrigger value="Debt" className="text-xs gap-1">
+                  <TrendingDown className="h-3 w-3 hidden sm:inline text-red-500" /> Debts
+                </TabsTrigger>
+                <TabsTrigger value="Investment" className="text-xs gap-1">
+                  <TrendingUp className="h-3 w-3 hidden sm:inline text-green-500" /> Invest
+                </TabsTrigger>
+              </TabsList>
+            </Tabs>
+          </div>
+
+          {filteredCommitments.length > 0 ? (
+            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+              {filteredCommitments.map((commitment) => (
+                <CommitmentCard
+                  key={commitment.id}
+                  commitment={commitment}
+                  onUpdate={updateCommitment}
+                  onDelete={deleteCommitment}
+                />
+              ))}
+            </div>
+          ) : (
+            <div className="flex flex-col items-center justify-center py-20 text-center border-2 border-dashed rounded-3xl bg-background/50">
+              <div className="bg-muted p-4 rounded-full mb-4">
+                <Wallet2 className="h-8 w-8 text-muted-foreground" />
               </div>
-              <SummaryCards {...totals} />
-            </section>
-
-            <Separator className="my-8" />
-
-            <section className="space-y-6">
-              <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-                <div className="flex items-center gap-2">
-                  <Filter className="h-4 w-4 text-muted-foreground" />
-                  <h3 className="text-lg font-semibold">Commitments</h3>
-                </div>
-                <Tabs value={filter} onValueChange={(v) => setFilter(v as any)} className="w-full lg:w-auto">
-                  <TabsList className="grid w-full grid-cols-3 h-9">
-                    <TabsTrigger value="All" className="text-xs gap-1">
-                      <LayoutGrid className="h-3 w-3 hidden sm:inline" /> All
-                    </TabsTrigger>
-                    <TabsTrigger value="Debt" className="text-xs gap-1">
-                      <TrendingDown className="h-3 w-3 hidden sm:inline text-red-500" /> Debts
-                    </TabsTrigger>
-                    <TabsTrigger value="Investment" className="text-xs gap-1">
-                      <TrendingUp className="h-3 w-3 hidden sm:inline text-green-500" /> Invest
-                    </TabsTrigger>
-                  </TabsList>
-                </Tabs>
-              </div>
-
-              {filteredCommitments.length > 0 ? (
-                <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-                  {filteredCommitments.map((commitment) => (
-                    <CommitmentCard
-                      key={commitment.id}
-                      commitment={commitment}
-                      onUpdate={updateCommitment}
-                      onDelete={deleteCommitment}
-                    />
-                  ))}
-                </div>
-              ) : (
-                <div className="flex flex-col items-center justify-center py-20 text-center border-2 border-dashed rounded-3xl bg-background/50">
-                  <div className="bg-muted p-4 rounded-full mb-4">
-                    <Wallet2 className="h-8 w-8 text-muted-foreground" />
-                  </div>
-                  <h3 className="text-lg font-medium">No commitments found</h3>
-                  <p className="text-muted-foreground max-w-xs mx-auto mt-1">
-                    {filter === "All" 
-                      ? "Start by adding your first financial commitment." 
-                      : `You don't have any ${filter} commitments yet.`}
-                  </p>
-                  {filter === "All" && (
-                    <div className="mt-6">
-                      <CommitmentForm onAdd={addCommitment} />
-                    </div>
-                  )}
+              <h3 className="text-lg font-medium">No commitments found</h3>
+              <p className="text-muted-foreground max-w-xs mx-auto mt-1">
+                {filter === "All" 
+                  ? "Start by adding your first financial commitment." 
+                  : `You don't have any ${filter} commitments yet.`}
+              </p>
+              {filter === "All" && (
+                <div className="mt-6">
+                  <CommitmentForm onAdd={addCommitment} />
                 </div>
               )}
-            </section>
-          </TabsContent>
-
-          <TabsContent value="salary-review" className="mt-0">
-            <section className="space-y-4">
-              <div className="flex flex-col gap-1">
-                <h2 className="text-2xl font-bold tracking-tight">Salary Review</h2>
-                <p className="text-muted-foreground">Analyze your payslips and track salary components over time.</p>
-              </div>
-              <SalaryReview />
-            </section>
-          </TabsContent>
-        </Tabs>
+            </div>
+          )}
+        </section>
       </main>
 
       <footer className="border-t py-6 md:py-0 mt-20">
