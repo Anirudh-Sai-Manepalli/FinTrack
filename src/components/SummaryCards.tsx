@@ -1,6 +1,7 @@
 import React from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { Wallet, TrendingUp, Clock, Landmark } from "lucide-react";
 import { formatIndianCurrency } from "../types";
 
@@ -13,6 +14,10 @@ interface SummaryCardsProps {
   salaryTotal: number;
   awardTotal: number;
   bonusTotal: number;
+  remainingDebt: number;
+  remainingInvestment: number;
+  remainingInsurance: number;
+  outflowDetails: { name: string; amount: number }[];
 }
 
 export function SummaryCards({ 
@@ -23,7 +28,11 @@ export function SummaryCards({
   totalReceivedIncome,
   salaryTotal,
   awardTotal,
-  bonusTotal
+  bonusTotal,
+  remainingDebt,
+  remainingInvestment,
+  remainingInsurance,
+  outflowDetails
 }: SummaryCardsProps) {
   const totalValue = overallPaid + overallRemaining;
   const progress = totalValue > 0 ? (overallPaid / totalValue) * 100 : 0;
@@ -49,9 +58,18 @@ export function SummaryCards({
           <CardTitle className="text-sm font-medium">Monthly Outflow</CardTitle>
           <Wallet className="h-4 w-4 text-muted-foreground" />
         </CardHeader>
-        <CardContent>
+        <CardContent className="pb-4">
           <div className="text-2xl font-bold">{formatIndianCurrency(totalMonthlyOutflow)}</div>
-          <p className="text-xs text-muted-foreground mt-1">Fixed expenses per month</p>
+          <ScrollArea className="h-[60px] mt-2 pr-2">
+            <div className="space-y-1">
+              {outflowDetails.map((item, idx) => (
+                <div key={idx} className="flex justify-between text-[10px] text-muted-foreground">
+                  <span className="truncate max-w-[100px]">{item.name}:</span>
+                  <span className="font-medium text-foreground">{formatIndianCurrency(item.amount)}</span>
+                </div>
+              ))}
+            </div>
+          </ScrollArea>
         </CardContent>
       </Card>
 
@@ -89,20 +107,36 @@ export function SummaryCards({
         <CardContent>
           <div className="text-2xl font-bold">{progress.toFixed(1)}%</div>
           <Progress value={progress} className="h-2 mt-2" />
-          <p className="text-xs text-muted-foreground mt-2">
-            {formatIndianCurrency(overallPaid)} of {formatIndianCurrency(totalValue)}
+          <p className="text-[10px] text-muted-foreground mt-2">
+            Paid till now: <span className="font-medium text-foreground">{formatIndianCurrency(overallPaid)}</span>
+          </p>
+          <p className="text-[10px] text-muted-foreground">
+            Total Target: <span className="font-medium text-foreground">{formatIndianCurrency(totalValue)}</span>
           </p>
         </CardContent>
       </Card>
 
       <Card className="border-none shadow-sm bg-primary/5">
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 py-3">
           <CardTitle className="text-sm font-medium">Total Remaining</CardTitle>
           <Clock className="h-4 w-4 text-muted-foreground" />
         </CardHeader>
-        <CardContent>
+        <CardContent className="pb-4">
           <div className="text-2xl font-bold">{formatIndianCurrency(overallRemaining)}</div>
-          <p className="text-xs text-muted-foreground mt-1">Total future commitments</p>
+          <div className="mt-2 space-y-1">
+            <div className="flex justify-between text-[10px] text-muted-foreground">
+              <span>Debt:</span>
+              <span className="font-medium text-foreground">{formatIndianCurrency(remainingDebt)}</span>
+            </div>
+            <div className="flex justify-between text-[10px] text-muted-foreground">
+              <span>Investment:</span>
+              <span className="font-medium text-foreground">{formatIndianCurrency(remainingInvestment)}</span>
+            </div>
+            <div className="flex justify-between text-[10px] text-muted-foreground">
+              <span>Insurance:</span>
+              <span className="font-medium text-foreground">{formatIndianCurrency(remainingInsurance)}</span>
+            </div>
+          </div>
         </CardContent>
       </Card>
     </div>

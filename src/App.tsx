@@ -8,7 +8,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { differenceInMonths, format, isSameDay, isAfter, startOfMonth, isBefore, addMonths } from "date-fns";
-import { Wallet2, Filter, TrendingUp, TrendingDown, LayoutGrid, Bell, BellDot } from "lucide-react";
+import { Wallet2, Filter, TrendingUp, TrendingDown, LayoutGrid, Bell, BellDot, Download, Upload as UploadIcon } from "lucide-react";
 import { Toaster } from "@/components/ui/sonner";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
@@ -120,6 +120,13 @@ export default function App() {
     let salaryTotal = 0;
     let awardTotal = 0;
     let bonusTotal = 0;
+    
+    // Breakdown for remaining
+    let remainingDebt = 0;
+    let remainingInvestment = 0;
+    let remainingInsurance = 0;
+
+    const outflowDetails: { name: string; amount: number }[] = [];
 
     commitments.forEach((c) => {
       // Outflow vs Inflow
@@ -144,6 +151,7 @@ export default function App() {
       } else {
         // Include RD in outflow for "Remaining Salary" calculation as it's a monthly commitment
         totalMonthlyOutflow += c.installmentAmount;
+        outflowDetails.push({ name: c.name, amount: c.installmentAmount });
       }
       
       const start = new Date(c.startDate);
@@ -211,17 +219,18 @@ export default function App() {
       
       if (!isInfinite) {
         const totalValue = (c.totalTenureMonths as number) * c.installmentAmount;
+        const remaining = totalValue - paid;
         overallPaid += paid;
-        overallRemaining += (totalValue - paid);
+        overallRemaining += remaining;
+
+        // Remaining Breakdown
+        if (['EMI', 'Expense'].includes(c.type)) remainingDebt += remaining;
+        if (c.type === 'RD') remainingInvestment += remaining;
+        if (c.type === 'Insurance') remainingInsurance += remaining;
       } else if (c.type !== 'Income') {
         overallPaid += paid;
       }
     });
-
-    // Special case: Add current remaining salary to "overallPaid" if we want to track it as "saved"
-    // But the user said "Total saved in salary commitment is not getting updated with the remaining salary"
-    // This implies the "Salary" commitment's "Total Paid" should reflect the accumulation.
-    // The current logic already does this via 'finalMonthsPaid * installmentAmount'.
 
     return { 
       totalMonthlyOutflow, 
@@ -231,9 +240,49 @@ export default function App() {
       totalReceivedIncome,
       salaryTotal,
       awardTotal,
-      bonusTotal
+      bonusTotal,
+      remainingDebt,
+      remainingInvestment,
+      remainingInsurance,
+      outflowDetails
     };
   }, [commitments]);
+
+  const handleExportData = () => {
+    const dataStr = JSON.stringify(commitments, null, 2);
+    const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
+    
+    const exportFileDefaultName = `fintrack_data_${format(new Date(), 'yyyy-MM-dd')}.json`;
+    
+    const linkElement = document.createElement('a');
+    linkElement.setAttribute('href', dataUri);
+    linkElement.setAttribute('download', exportFileDefaultName);
+    linkElement.click();
+    toast.success("Data exported successfully!");
+  };
+
+  const handleImportData = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const importedData = JSON.parse(event.target?.result as string);
+        if (Array.isArray(importedData)) {
+          setCommitments(importedData);
+          toast.success("Data imported successfully!");
+        } else {
+          toast.error("Invalid data format. Expected an array of commitments.");
+        }
+      } catch (err) {
+        toast.error("Failed to parse the imported file.");
+      }
+    };
+    reader.readAsText(file);
+    // Reset input
+    e.target.value = '';
+  };
 
   return (
     <div className="min-h-screen bg-[#F8F9FA] text-foreground font-sans selection:bg-primary/10">
@@ -248,6 +297,23 @@ export default function App() {
           </div>
           
           <div className="flex items-center gap-3">
+            <div className="hidden sm:flex items-center gap-2">
+              <Button variant="outline" size="sm" onClick={() => document.getElementById('import-input')?.click()} className="flex items-center gap-2 h-9 rounded-xl">
+                <UploadIcon className="h-4 w-4" />
+                Import
+              </Button>
+              <input 
+                id="import-input"
+                type="file"
+                accept=".json"
+                onChange={handleImportData}
+                className="hidden"
+              />
+              <Button variant="outline" size="sm" onClick={handleExportData} className="flex items-center gap-2 h-9 rounded-xl">
+                <Download className="h-4 w-4" />
+                Export
+              </Button>
+            </div>
             <Sheet>
               <SheetTrigger render={(props) => (
                 <Button {...props} variant="ghost" size="icon" className="relative" id="notif-trigger">

@@ -234,7 +234,10 @@ export const CommitmentCard: React.FC<CommitmentCardProps> = ({ commitment, onUp
             <p className="text-xs text-muted-foreground">
               {commitment.type === 'Income' ? 'Total Received' : stats.category === 'Investment' ? 'Total Saved' : 'Total Paid'}
             </p>
-            <p className="text-sm font-semibold text-primary">{formatIndianCurrency(stats.totalPaid)}</p>
+            <p className="text-sm font-semibold text-primary">
+              <span className="text-[10px] text-muted-foreground mr-1">Paid till now:</span>
+              {formatIndianCurrency(stats.totalPaid)}
+            </p>
           </div>
           {stats.totalValue !== null && (
             <>
