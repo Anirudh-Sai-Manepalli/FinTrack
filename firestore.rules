@@ -75,10 +75,8 @@ service cloud.firestore {
     }
 
     match /commitments/{commitmentId} {
-      allow read: if isDocOwner() || isAdmin();
-      allow create: if isAuthenticated() && isValidCommitment(request.resource.data);
-      allow update: if isAuthenticated() && (isDocOwner() || isAdmin()) && isValidCommitment(request.resource.data);
-      allow delete: if isAuthenticated() && (isDocOwner() || isAdmin());
+      allow read: if isAuthenticated() && (resource == null || resource.data.userId == request.auth.uid);
+      allow write: if isAuthenticated() && (request.resource.data.userId == request.auth.uid);
     }
   }
 }

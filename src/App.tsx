@@ -352,13 +352,34 @@ export default function App() {
         
         const importedData = JSON.parse(result);
         if (Array.isArray(importedData)) {
+          console.log("Starting import for", importedData.length, "items");
           const batch = writeBatch(db);
-          importedData.forEach((c) => {
-            const docRef = doc(db, "commitments", c.id);
-            batch.set(docRef, cleanObject({ ...c, userId: user.uid }));
+          let count = 0;
+          
+          importedData.forEach((c, index) => {
+            if (!c.id && !c.name) return; // Skip empty/invalid items
+            
+            // Sanitize ID: remove slashes to prevent sub-collection path issues
+            const baseId = c.id ? String(c.id).replace(/\//g, '-') : crypto.randomUUID();
+            const finalId = baseId;
+            const docRef = doc(db, "commitments", finalId);
+            const dataToSet = cleanObject({ 
+              ...c, 
+              id: finalId, // Ensure ID is in the data
+              userId: user.uid 
+            });
+            
+            if (index === 0) console.log("Example item being imported:", dataToSet);
+            batch.set(docRef, dataToSet);
+            count++;
           });
-          await batch.commit();
-          toast.success("Data imported successfully!");
+          
+          if (count > 0) {
+            await batch.commit();
+            toast.success(`${count} records imported successfully!`);
+          } else {
+            toast.error("No valid records found in the file.");
+          }
         } else {
           toast.error("Invalid data format. Expected an array of commitments.");
         }
