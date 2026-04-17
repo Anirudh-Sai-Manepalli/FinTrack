@@ -354,30 +354,41 @@ export default function App() {
         const importedData = JSON.parse(result);
         if (Array.isArray(importedData)) {
           console.log("Starting import for", importedData.length, "items");
-          const batch = writeBatch(db);
-          let count = 0;
           
-          importedData.forEach((c, index) => {
-            if (!c.id && !c.name) return; // Skip empty/invalid items
-            
-            // Sanitize ID: remove slashes to prevent sub-collection path issues
-            const baseId = c.id ? String(c.id).replace(/\//g, '-') : crypto.randomUUID();
-            const finalId = baseId;
-            const docRef = doc(db, "commitments", finalId);
-            const dataToSet = cleanObject({ 
-              ...c, 
-              id: finalId, // Ensure ID is in the data
-              userId: user.uid 
+          // Firestore batch limit is 500 operations.
+          const CHUNK_SIZE = 450;
+          let totalImported = 0;
+
+          for (let i = 0; i < importedData.length; i += CHUNK_SIZE) {
+            const chunk = importedData.slice(i, i + CHUNK_SIZE);
+            const batch = writeBatch(db);
+            let chunkCount = 0;
+
+            chunk.forEach((c) => {
+              if (!c.name) return; // Skip invalid items
+              
+              const baseId = c.id ? String(c.id).replace(/\//g, '-') : crypto.randomUUID();
+              const docRef = doc(db, "commitments", baseId);
+              
+              const dataToSet = cleanObject({ 
+                ...c, 
+                id: baseId,
+                userId: user.uid,
+                startDate: c.startDate || new Date().toISOString()
+              });
+              
+              batch.set(docRef, dataToSet);
+              chunkCount++;
             });
-            
-            if (index === 0) console.log("Example item being imported:", dataToSet);
-            batch.set(docRef, dataToSet);
-            count++;
-          });
+
+            if (chunkCount > 0) {
+              await batch.commit();
+              totalImported += chunkCount;
+            }
+          }
           
-          if (count > 0) {
-            await batch.commit();
-            toast.success(`${count} records imported successfully!`);
+          if (totalImported > 0) {
+            toast.success(`${totalImported} records imported successfully!`);
           } else {
             toast.error("No valid records found in the file.");
           }
@@ -385,8 +396,14 @@ export default function App() {
           toast.error("Invalid data format. Expected an array of commitments.");
         }
       } catch (err: any) {
-        console.error("Import error:", err);
-        toast.error(`Import failed: ${err.message || "Invalid JSON format"}`);
+        console.error("Import error detail:", err);
+        // Use standard error handler for logging security info
+        try {
+          handleFirestoreError(err, OperationType.WRITE, "import-batch");
+        } catch (wrappedErr) {
+          console.error("Wrapped error for logging:", wrappedErr);
+        }
+        toast.error(`Import failed: Check console for security details`);
       }
     };
     reader.readAsText(file);
