@@ -1,4 +1,4 @@
-export type CommitmentType = 'EMI' | 'Insurance' | 'RD' | 'Subscription' | 'Expense' | 'Income';
+export type CommitmentType = 'EMI' | 'Insurance' | 'Savings' | 'Subscription' | 'Expense' | 'Income';
 export type CommitmentCategory = 'Debt' | 'Investment' | 'Regular';
 
 export interface PaymentRecord {

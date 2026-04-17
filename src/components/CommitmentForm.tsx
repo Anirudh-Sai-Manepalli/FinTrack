@@ -100,28 +100,6 @@ export function CommitmentForm({ onAdd, initialData, trigger }: CommitmentFormPr
   const [tempOverrideDate, setTempOverrideDate] = useState(format(new Date(), "yyyy-MM"));
 
   useEffect(() => {
-    if (type === 'EMI' && loanAmount && interestRate && tenure && !isInfinite) {
-      const P = parseFloat(loanAmount);
-      const R = parseFloat(interestRate) / 12 / 100;
-      const N = parseInt(tenure);
-      
-      if (P > 0 && R > 0 && N > 0) {
-        const emi = (P * R * Math.pow(1 + R, N)) / (Math.pow(1 + R, N) - 1);
-        setAmount(Math.round(emi).toString());
-      }
-    }
-  }, [type, loanAmount, interestRate, tenure, isInfinite]);
-
-  const handleDateInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const val = e.target.value;
-    setDateInput(val);
-    const parsed = parse(val, "yyyy-MM-dd", new Date());
-    if (isValid(parsed)) {
-      setStartDate(parsed);
-    }
-  };
-
-  useEffect(() => {
     if (startDate) {
       setDateInput(format(startDate, "yyyy-MM-dd"));
     }
@@ -252,7 +230,7 @@ export function CommitmentForm({ onAdd, initialData, trigger }: CommitmentFormPr
               <SelectContent>
                 <SelectItem value="EMI">EMI (Loan)</SelectItem>
                 <SelectItem value="Insurance">Insurance</SelectItem>
-                <SelectItem value="RD">Savings</SelectItem>
+                <SelectItem value="Savings">Savings</SelectItem>
                 <SelectItem value="Subscription">Subscription</SelectItem>
                 <SelectItem value="Expense">Regular Expense</SelectItem>
                 <SelectItem value="Income">Regular Income</SelectItem>

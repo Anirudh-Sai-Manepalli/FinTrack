@@ -15,13 +15,13 @@
     },
     "Commitment": {
       "title": "Commitment",
-      "description": "A financial commitment (EMI, RD, Income, etc.)",
+      "description": "A financial commitment (EMI, Savings, Income, etc.)",
       "type": "object",
       "properties": {
         "id": { "type": "string" },
         "userId": { "type": "string", "description": "The UID of the owner" },
         "name": { "type": "string" },
-        "type": { "type": "string", "enum": ["EMI", "Insurance", "RD", "Subscription", "Expense", "Income"] },
+        "type": { "type": "string", "enum": ["EMI", "Insurance", "Savings", "Subscription", "Expense", "Income"] },
         "startDate": { "type": "string", "format": "date-time" },
         "installmentAmount": { "type": "number" },
         "totalTenureMonths": { "type": "number" },

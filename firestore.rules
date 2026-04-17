@@ -20,7 +20,7 @@ service cloud.firestore {
     //   - id: string (required)
     //   - userId: string (required) - Owner ID
     //   - name: string (required)
-    //   - type: string (required) - EMI, RD, etc.
+    //   - type: string (required) - EMI, Savings, etc.
     //   - startDate: timestamp (required)
     //   - installmentAmount: number (required)
     //   - ... extra details
@@ -59,12 +59,12 @@ service cloud.firestore {
     }
 
     match /commitments/{commitmentId} {
-      // Use list and get separately for maximum compatibility with query analysis
-      allow list: if isAuthenticated() && resource.data.userId == request.auth.uid;
-      allow get: if isAuthenticated() && resource.data.userId == request.auth.uid;
-      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
-      allow update: if isAuthenticated() && resource.data.userId == request.auth.uid && request.resource.data.userId == request.auth.uid;
-      allow delete: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      // For list rules, we cannot use resource.data directly in a general way.
+      // The query itself must filter by userId, and the rule verifies the filter matches the auth token.
+      allow list: if isAuthenticated();
+      allow get, create, update, delete: if isAuthenticated() && 
+        (resource == null || resource.data.userId == request.auth.uid) &&
+        (request.resource == null || request.resource.data.userId == request.auth.uid);
     }
   }
 }

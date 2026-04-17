@@ -203,7 +203,7 @@ export default function App() {
   const filteredCommitments = useMemo(() => {
     if (filter === "All") return commitments;
     if (filter === "Debt") return commitments.filter(c => ['EMI', 'Expense'].includes(c.type));
-    if (filter === "Investment") return commitments.filter(c => ['RD', 'Income'].includes(c.type));
+    if (filter === "Investment") return commitments.filter(c => ['Savings', 'Income'].includes(c.type));
     return commitments.filter((c) => c.type === filter);
   }, [commitments, filter]);
 
@@ -246,7 +246,7 @@ export default function App() {
         }
         totalMonthlyInflow += currentSalary;
       } else {
-        // Include RD in outflow for "Remaining Salary" calculation as it's a monthly commitment
+        // Include Savings in outflow for "Remaining Salary" calculation as it's a monthly commitment
         totalMonthlyOutflow += c.installmentAmount;
         outflowDetails.push({ name: c.name, amount: c.installmentAmount });
       }
@@ -322,7 +322,7 @@ export default function App() {
 
         // Remaining Breakdown
         if (['EMI', 'Expense'].includes(c.type)) remainingDebt += remaining;
-        if (c.type === 'RD') remainingInvestment += remaining;
+        if (c.type === 'Savings') remainingInvestment += remaining;
         if (c.type === 'Insurance') remainingInsurance += remaining;
       } else if (c.type !== 'Income') {
         overallPaid += paid;
@@ -424,7 +424,9 @@ export default function App() {
         console.error("Import error detail:", err);
         // Use standard error handler for logging security info
         try {
-          handleFirestoreError(err, OperationType.WRITE, "import-batch");
+          // If it's a Firestore error from batch.commit, we can't easily get the target path
+          // but we can log the general operation
+          handleFirestoreError(err, OperationType.WRITE, "commitments-batch");
         } catch (wrappedErr) {
           console.error("Wrapped error for logging:", wrappedErr);
         }
