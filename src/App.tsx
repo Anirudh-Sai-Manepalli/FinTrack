@@ -7,7 +7,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { differenceInMonths, format, isSameDay, isAfter, startOfMonth, isBefore, addMonths } from "date-fns";
-import { Wallet2, Filter, TrendingUp, TrendingDown, LayoutGrid, Bell, BellDot, Download, Upload as UploadIcon, LogOut, User as UserIcon, Trash2 } from "lucide-react";
+import { Wallet2, Filter, TrendingUp, TrendingDown, LayoutGrid, Bell, BellDot, Download, Upload as UploadIcon, LogOut, User as UserIcon, Trash2, Loader2 } from "lucide-react";
 import { Toaster } from "@/components/ui/sonner";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
@@ -23,7 +23,7 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { auth, db, handleFirestoreError, OperationType, cleanObject } from "./lib/firebase";
 import { onAuthStateChanged, User, signOut as firebaseSignOut } from "firebase/auth";
-import { collection, query, where, onSnapshot, doc, setDoc, deleteDoc, writeBatch } from "firebase/firestore";
+import { collection, query, where, onSnapshot, doc, setDoc, deleteDoc, writeBatch, getDocs } from "firebase/firestore";
 import { Login } from "./components/Login";
 import {
   DropdownMenu,
@@ -38,6 +38,7 @@ import {
 export default function App() {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isReseting, setIsReseting] = useState(false);
   const [commitments, setCommitments] = useState<Commitment[]>([]);
   const [filter, setFilter] = useState<CommitmentType | "All" | "Debt" | "Investment">("All");
 
@@ -400,12 +401,14 @@ export default function App() {
     }
     
     // Using native confirm for a blocking safety check
-    if (window.confirm("Are you sure you want to delete ALL your data? This action is permanent and cannot be undone.")) {
+    if (window.confirm("Are you sure you want to delete ALL your data? This action is permanent and cannot be undone. This only affects YOUR records.")) {
+      setIsReseting(true);
       try {
         const batch = writeBatch(db);
         let count = 0;
+        
+        // Double check owner UID in the loop
         commitments.forEach((c) => {
-          // Security gate: only delete if the user owns it
           if (c.userId === user.uid) {
             const docRef = doc(db, "commitments", c.id);
             batch.delete(docRef);
@@ -415,13 +418,25 @@ export default function App() {
         
         if (count > 0) {
           await batch.commit();
-          toast.success("All your data has been wiped clean.");
+          
+          // Background verification: Check if any records still exist for this user
+          const verificationQuery = query(collection(db, "commitments"), where("userId", "==", user.uid));
+          const verifySnap = await getDocs(verificationQuery);
+          
+          if (verifySnap.empty) {
+            toast.success("All your personal records have been securely removed.");
+          } else {
+            console.warn("Verification showed remaining some records after batch delete.");
+            toast.error("Some records might remain. Please refresh if needed.");
+          }
         } else {
-          toast.info("No personal data found to delete.");
+          toast.info("No personal data found associated with your account.");
         }
       } catch (error) {
         handleFirestoreError(error, OperationType.WRITE, "reset-data-all");
-        toast.error("Failed to reset data. Please try again.");
+        toast.error("Failed to reset data accurately. Please try again.");
+      } finally {
+        setIsReseting(false);
       }
     }
   };
@@ -504,9 +519,17 @@ export default function App() {
                   </DropdownMenuLabel>
                 </DropdownMenuGroup>
                 <DropdownMenuSeparator className="bg-muted/50" />
-                <DropdownMenuItem onClick={handleResetData} className="rounded-lg text-destructive focus:text-destructive focus:bg-destructive/10 cursor-pointer gap-2 py-2">
-                  <Trash2 className="h-4 w-4" />
-                  Reset all data
+                <DropdownMenuItem 
+                  onClick={handleResetData} 
+                  disabled={isReseting}
+                  className="rounded-lg text-destructive focus:text-destructive focus:bg-destructive/10 cursor-pointer gap-2 py-2"
+                >
+                  {isReseting ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Trash2 className="h-4 w-4" />
+                  )}
+                  {isReseting ? "Erasing Data..." : "Reset all data"}
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={handleSignOut} className="rounded-lg text-muted-foreground hover:text-foreground cursor-pointer gap-2 py-2">
                   <LogOut className="h-4 w-4" />
