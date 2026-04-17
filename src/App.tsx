@@ -367,7 +367,15 @@ export default function App() {
             chunk.forEach((c) => {
               if (!c.name) return; // Skip invalid items
               
-              const baseId = c.id ? String(c.id).replace(/\//g, '-') : crypto.randomUUID();
+              // More aggressive ID sanitization to prevent path issues
+              const rawId = c.id ? String(c.id) : crypto.randomUUID();
+              const baseId = rawId.replace(/[^a-zA-Z0-9-_]/g, '-');
+              
+              if (!baseId) {
+                console.warn("Skipping item with invalid generated ID");
+                return;
+              }
+
               const docRef = doc(db, "commitments", baseId);
               
               const dataToSet = cleanObject({ 
