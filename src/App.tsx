@@ -44,8 +44,25 @@ export default function App() {
 
   // Auth Listener
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (u) => {
+    const unsubscribe = onAuthStateChanged(auth, async (u) => {
       setUser(u);
+      if (u) {
+        // Ensure user document exists for role-based rules
+        const userRef = doc(db, "users", u.uid);
+        try {
+          // We use setDoc with merge: true to avoid overwriting existing roles
+          await setDoc(userRef, {
+            uid: u.uid,
+            email: u.email,
+            displayName: u.displayName,
+            photoURL: u.photoURL,
+            createdAt: new Date().toISOString(),
+            role: 'user' // Default role
+          }, { merge: true });
+        } catch (error) {
+          console.error("Failed to sync user profile", error);
+        }
+      }
       setLoading(false);
     });
     return unsubscribe;
